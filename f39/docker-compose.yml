@@ -1,0 +1,135 @@
+services:
+
+  db:
+    environment:
+      - POSTGRES_USER=${ABP_DB_USER:-foreman}
+      - POSTGRES_PASSWORD=${ABP_DB_PW:-root123}
+      - POSTGRES_DATABASE=${ABP_DB_NAME:-foreman}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    hostname: abpdb.${ABP_DOMAIN:-example.com}
+    image: local/postgres:15
+    expose:
+      - "5432:5432"
+    ports:
+      - "5432:5432"
+    
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 5432 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./abpdb:/docker-entrypoint-initdb.d
+
+  app: &app_base 
+    image: local/alma-f39
+    command: sudo -u foreman -EH /usr/share/foreman/bin/rails server -e production -p 3000 -b 0.0.0.0 -u puma 
+    environment:
+      - ABP_DB_NAME=${ABP_DB_NAME:-foreman}
+      - ABP_DB_USER=${ABP_DB_USER:-foreman}
+      - ABP_DB_PW=${ABP_DB_PW:-root123}
+      - ABP_DOMAIN=${ABP_DOMAIN:-example.com}
+      - ABP_NAME=${ABP_NAME:-abpmaster}
+      - ABP_DB_FQDN=${ABP_DB_FQDN:-abpdb.example.com}
+      - PROXY_FQDN=${PROXY_FQDN:-dbpproxy.example.com}
+      - DATABASE_URL=postgres://${ABP_DB_USER}:${ABP_DB_PW}@db/${ABP_DB_NAME}?pool=5
+      - RAILS_MAX_THREADS=5
+      - RAILS_ENV=production
+      - FOREMAN_RAILS_CACHE_STORE_TYPE=redis
+      - FOREMAN_RAILS_CACHE_STORE_URLS=redis://redis-cache:6379/0
+      - DYNFLOW_REDIS_URL=redis://redis-tasks:6379/0
+      - REDIS_PROVIDER=DYNFLOW_REDIS_URL
+    hostname: abpapp.${ABP_DOMAIN:-example.com}
+    links:
+      - db
+      - redis-cache
+      - redis-tasks
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "${MY_DOCKER_IP:-127.0.0.1}:3000:3000"
+      - "${MY_DOCKER_IP:-127.0.0.1}:5910-5930:5910-5930"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 3000 || exit 1"]
+      interval: 5m
+      start_period: 1m
+    volumes:
+      - puppetlabs:/etc/puppetlabs
+      - ./abplog:/var/log/abp
+      - ./wwwpub:/var/www/html/pub
+
+  orchestrator:
+    <<: *app_base
+    command: sudo -u foreman -EH /usr/libexec/foreman/sidekiq-selinux -e production -r /usr/share/foreman/extras/dynflow-sidekiq.rb -c 1 -q dynflow_orchestrator
+    hostname: orchestrator.${ABP_DOMAIN:-example.com}
+    ports: []
+    healthcheck:
+      disable: true
+
+  worker:
+    <<: *app_base
+    command: sudo -u foreman -EH /usr/libexec/foreman/sidekiq-selinux -e production -r /usr/share/foreman/extras/dynflow-sidekiq.rb -c 15 -q default,1 -q remote_execution,1
+    ports: []
+    healthcheck:
+      disable: true
+
+  redis-cache:
+    image: redis
+
+  redis-tasks:
+    image: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-persistent:/data
+  
+  web:
+    <<: *app_base
+    command: /usr/sbin/httpd -DFOREGROUND
+    expose:
+       - "443"
+    ports:
+      #- "80:80"
+      - "50443:443"
+    hostname: abpmaster.${ABP_DOMAIN:-example.com}
+    links:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 443 || exit 1"]
+      interval: 10s
+      start_period: 10s
+
+  proxy:
+    environment:
+      - ABP_EXTERNAL_IP_ADDR=${ABP_EXTERNAL_IP_ADDR}
+      - ABP_NAME=${ABP_NAME:-abpmaster}
+      - ABP_DOMAIN=${ABP_DOMAIN:-example.com}
+    privileged: true
+    hostname: abpproxy.example.com
+    image: local/alma-f39-proxy
+    volumes:
+    - puppetlabs:/etc/puppetlabs
+    links:
+      - app
+      - web
+      - worker
+    ports:
+      - "69:69"
+      - "53:53"
+      - "8000:8000"
+    depends_on:
+      web:
+        condition: service_healthy    
+    restart: always
+    #healthcheck:
+    #  test: ["CMD-SHELL", "nc -z 127.0.0.1 8443 || exit 1"]
+    #  interval: 5m
+    #  start_period: 1m
+
+volumes:
+  db:
+  redis-persistent:
+  puppetlabs:

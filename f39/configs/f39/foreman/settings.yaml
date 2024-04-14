@@ -1,0 +1,72 @@
+### File managed with puppet ###
+## Module:           'foreman'
+
+:unattended: true
+:require_ssl: true
+
+# The following values are used for providing default settings during db migrate
+:oauth_active: true
+:oauth_map_users: false
+:oauth_consumer_key: 77jJueRxoC2KX6mfuUba4giKoQ2TSdaS
+:oauth_consumer_secret: p9w3YVKacXuBE9J3jXG7RRpJStrve6Bi
+
+# Websockets
+:websockets_encrypt: true
+:websockets_ssl_key: /etc/puppetlabs/puppet/ssl/private_keys/ABP_FQDN.pem
+:websockets_ssl_cert: /etc/puppetlabs/puppet/ssl/certs/ABP_FQDN.pem
+
+# SSL-settings
+:ssl_certificate: /etc/puppetlabs/puppet/ssl/certs/ABP_FQDN.pem
+:ssl_ca_file: /etc/puppetlabs/puppet/ssl/certs/ca.pem
+:ssl_priv_key: /etc/puppetlabs/puppet/ssl/private_keys/ABP_FQDN.pem
+
+# HSTS setting
+:hsts_enabled: true
+
+# Log settings for the current environment can be adjusted by adding them
+# here. For example, if you want to increase the log level.
+:logging:
+  :level: info
+  :production:
+    :type: file
+    :layout: multiline_request_pattern
+
+# Individual logging types can be toggled on/off here
+:loggers:
+
+# Foreman telemetry has three destinations: prometheus, statsd and rails log.
+:telemetry:
+  # prefix for all metrics
+  :prefix: 'fm_rails'
+  # prometheus endpoint is at /metrics
+  # warning: ruby client library currently does not supprt multi-process web servers
+  :prometheus:
+    :enabled: false
+  # works with statsd_exporter too, use the rake task to generate config
+  :statsd:
+    :enabled: false
+    # IP and port (do not use DNS)
+    :host: '127.0.0.1:8125'
+    # one of 'statsd', 'statsite' or 'datadog'
+    :protocol: 'statsd'
+  # Rails logs end up in logger named 'telemetry' when enabled
+  :logger:
+    :enabled: false
+    # logging level as in Logger::LEVEL
+    :level: 'DEBUG'
+
+:dynflow:
+  :redis_url: redis://redis-tasks:6379/6
+
+:rails_cache_store:
+  :type: redis
+  :urls:
+    - redis://redis-cache:6379/4
+  :options:
+    :compress: true
+    :namespace: foreman
+
+# Configure reverse proxy headers
+:ssl_client_dn_env: HTTP_SSL_CLIENT_S_DN
+:ssl_client_verify_env: HTTP_SSL_CLIENT_VERIFY
+:ssl_client_cert_env: HTTP_SSL_CLIENT_CERT

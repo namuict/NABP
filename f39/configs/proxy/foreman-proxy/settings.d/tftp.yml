@@ -1,0 +1,15 @@
+---
+# Can be true, false, or http/https to enable just one of the protocols
+:enabled: https
+
+:tftproot: /var/lib/tftpboot
+# Defines the TFTP Servername to use, overrides the name in the subnet declaration
+:tftp_servername: ABP_EXTERNAL_IP_ADDR
+
+# Defines the default connection timeout in seconds needed to download tftp artifacts
+# like initrd and vmlinuz. Default value 10 seconds
+#:tftp_connect_timeout: 10
+
+# Defines the default certificate action for certificate checking.
+# When false, the argument --no-check-certificate will be used.
+#:verify_server_cert: true

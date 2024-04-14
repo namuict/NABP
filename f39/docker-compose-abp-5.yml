@@ -1,0 +1,133 @@
+services:
+
+  abpql:
+    image: ${DOCKER_REGISTRY_URL}namuict/abpql${TAG}
+    restart: unless-stopped
+    container_name: "abpql"
+    hostname: "abpql.example.com"
+    #extra_hosts:
+      #- foreman.namuict.com:${BACKEND_HOST_IP}
+    volumes:
+      - websockify:/opt/namuict/abp/data/websockify/tokens/
+      #- ./certs:/etc/ssl/certs
+      #- ./CA:/etc/pki/CA
+      - puppetlabs:/etc/puppetlabs
+ 
+    environment:
+      - PORT=80
+      - SERVICE_NAME=${SERVICE_NAME}
+      - ABP_UI_FQDN=${ABP_QL_FQDN:-abpql.example.com}
+      #- FOREMAN_API_URL=${FOREMAN_API_URL}
+      - FOREMAN_API_URL=https://web
+      - NODE_ENV=${NODE_ENV}
+      - PROXY_PREFIX=${PROXY_PREFIX}
+      - TRANSPORT_PORT=${TRANSPORT_PORT}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_EXPIRATION_TIME=${JWT_EXPIRATION_TIME}
+      - FALLBACK_LANGUAGE=${FALLBACK_LANGUAGE}
+      - NATS_ENABLED=${NATS_ENABLED}
+      - ENABLE_ORM_LOGS=${ENABLE_ORM_LOGS}
+      - ENABLE_DOCUMENTATION=${ENABLE_DOCUMENTATION}
+      - TEMPORALIO_URI=${TEMPORALIO_URI}
+      - POSTGRAPHILE_DB_DATABASE=${POSTGRAPHILE_DB_DATABASE}
+      - CANDLEPIN_DB_DATABASE=${CANDLEPIN_DB_DATABASE}
+      - PULPCORE_DB_DATABASE=${PULPCORE_DB_DATABASE}
+      - ABP_DB_HOST=${ABP_DB_HOST}
+      - ABP_DB_PORT=${ABP_DB_PORT}
+      - ABP_DB_USERNAME=${ABP_DB_USERNAME}
+      - ABP_DB_PASSWORD=${ABP_DB_PASSWORD}
+      - ABP_DB_DATABASE=${ABP_DB_DATABASE}
+      - ABP_LOG_DB_DATABASE=${ABP_LOG_DB_DATABASE}
+      - ABP_POSTGRAPHILE_DB_DATABASE=${ABP_POSTGRAPHILE_DB_DATABASE}
+
+    expose:
+      - 8080 #This is GRPC port for communicating with idrac-service
+      - 80 #This is for handling HTTP requests
+    ports:
+      - 50090:80
+
+  idrac-exporter:
+    #image: ${DOCKER_REGISTRY_URL}namuict/idrac-exporter@sha256:c4d27f44c0cf9bdd5608cbe76a164ea4a4faecf27fcd9e03eeb25e71402d4397
+    image: ${DOCKER_REGISTRY_URL}namuict/idrac-exporter${TAG}
+    restart: unless-stopped
+    container_name: "idrac-exporter"
+    environment:
+      - PORT=80
+      - MONITORING_SERVICE_PORT=8080
+      - MONITORING_SERVICE_HOST=abpql
+    expose:
+      - 80
+      - 8080
+
+  abpui:
+    image: ${DOCKER_REGISTRY_URL}namuict/abpui${TAG}
+    restart: unless-stopped
+    container_name: "abpui"  
+    privileged: true
+    hostname: "abpui.example.com"
+    volumes:
+      - ./configs/abpui/.env:/workspace/build/.env
+      - puppetlabs:/etc/puppetlabs
+      #- ./configs/images:/usr/share/nginx/html/pub
+    environment:
+      - PORT=3000
+      - REACT_APP_BASE_LAYOUT_CONFIG_KEY=abp-theme
+      - REACT_APP_BACKEND_PROXY_PATH=${REACT_APP_BACKEND_PROXY_PATH}
+      - REACT_APP_BACKEND_BASE=${REACT_APP_BACKEND_BASE}
+      - REACT_APP_BACKEND_API_VER=${REACT_APP_BACKEND_API_VER}
+      - GENERATE_SOURCEMAP=false
+      - REACT_APP_ABP_BASE_PATH=${REACT_APP_ABP_BASE_PATH}
+      - REACT_APP_ABP_PROXY_PATH=${REACT_APP_ABP_PROXY_PATH}
+      - BACKEND_QL_IP=https://${BACKEND_QL_IP}
+      - FOREMAN_ROOT_PASS=YWRtaW46cm9vdDEyMw==
+      - ABP_FQDN_NAME=${ABP_FQDN_NAME:-abpmaster.example.com}
+      - ABP_UI_FQDN=${ABP_UI_FQDN:-abpui.example.com}
+    expose:
+      - 443
+      - 80
+    ports:
+      - 443:443
+      - 80:80
+
+  ztp:
+    image: ${DOCKER_REGISTRY_URL}namuict/ztp
+    restart: unless-stopped
+    container_name: "ztp"
+    #extra_hosts:
+      #- foreman.namuict.com:${BACKEND_HOST_IP}
+      #- abpalma.example.com:${BACKEND_HOST_IP}
+    environment:
+      - "JDK_JAVA_OPTIONS=--add-opens java.base/java.lang=ALL-UNNAMED"
+      # - JVM_ARGS=--add-opens java.base/java.lang=ALL-UNNAMED
+      #- foreman.url=${FOREMAN_URL}
+      - abpql.url=${ABPQL_URL}
+      - foreman.url=https://web
+      # - abpql.url=http://abpql
+      - tracing.enabled=false
+      - spring.temporal.connection.target=temporal:7233
+      - spring.sleuth.otel.exporter.otlp.endpoint=http://0.0.0.0:4317
+      - spring.sleuth.otel.config.trace-id-ratio-based=0
+      - spring.temporal.workflow-cache.max-instances=1000
+      - spring.temporal.workflow-cache.max-threads=1000
+
+
+  ztp-redfish:
+    image: ${DOCKER_REGISTRY_URL}namuict/ztp-redfish
+    restart: unless-stopped
+    container_name: "ztp-redfish"
+    environment:
+      - TEMPORAL_HOST=temporal:7233
+      # - OTEL_COLLECTOR_HOST=otel-collector:4317
+  
+  websockify:
+    #image: ${DOCKER_REGISTRY_URL}namuict/websockify@sha256:dcd32e628f090aec4dcaf82b78834e2eac7595443558de308c9de8ce58301fcb
+    image: ${DOCKER_REGISTRY_URL}namuict/websockify${TAG}
+    restart: unless-stopped
+    container_name: "websockify"
+    volumes:
+      - websockify:/opt/namuict/abp/data/websockify/tokens/
+    expose:
+      - 80
+volumes:
+  websockify:
+  puppetlabs:

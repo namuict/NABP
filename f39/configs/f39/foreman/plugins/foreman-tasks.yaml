@@ -1,0 +1,58 @@
+:foreman-tasks:
+#
+# Logging configuration can be changed by uncommenting the loggers
+# section and the logger configuration desired.
+#
+#   :loggers:
+#     :dynflow:
+#       :enabled: true
+#     :action:
+#       :enabled: true
+
+  # Task backup configuration can be changed by altering the values in
+  # the backup section
+  #
+  :backup:
+    #
+    # Whether to back up tasks when they are removed
+    #
+    :backup_deleted_tasks: true
+    #
+    # Where to put the tasks which were backed up
+    #
+    :backup_dir: /var/lib/foreman/tasks-backup
+
+# Cleaning configuration: how long should the actions be kept before deleted
+# by `rake foreman_tasks:clean` task
+#
+  :cleanup:
+#
+# per action settings to override the default defined in the actions (self.cleanup_after method)
+#
+#    :actions:
+#      - :name: Actions::Foreman::Host::ImportFacts
+#        :after: 10d
+#      # Actions name can also be a list of names
+#      - :name:
+#          - Actions::Katello::Host::Erratum::Install
+#          - Actions::Katello::Host::Erratum::ApplicableErrataInstall
+#        :after: 90d
+#      # Actions can also define a condition
+#      - :name:
+#          - Actions::RemoteExecution::RunHostJob
+#          - Actions::RemoteExecution::RunHostsJob
+#        :filter: remote_execution_feature.label = katello_errata_install
+#        :after: 90d
+
+#
+# Rules defined in this section by default don't operate
+# on tasks specified in the actions section. This behavior
+# can be overriden by setting the override_actions to true
+   :rules:
+     # Delete successful tasks after a month
+     - :filter: result = success
+       :after: 30d
+     # Delete everything (any action, any state) after one year
+     - :states: all # Either list of state names or all
+       :after: 1y
+       :override_actions: true

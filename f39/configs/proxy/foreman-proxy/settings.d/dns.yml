@@ -1,0 +1,14 @@
+---
+# Can be true, false, or http/https to enable just one of the protocols
+:enabled: false
+# Valid providers:
+#   dns_dnscmd (Microsoft Windows native implementation)
+#   dns_infoblox (separate plugin)
+#   dns_libvirt (dnsmasq via libvirt)
+#   dns_nsupdate
+#   dns_nsupdate_gss (for GSS-TSIG support)
+#   dns_powerdns (separate plugin)
+#   dns_route53 (separate plugin)
+:use_provider: dns_nsupdate
+# use this setting if you want to override default TTL setting (86400)
+:dns_ttl: 86400

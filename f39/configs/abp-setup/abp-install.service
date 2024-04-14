@@ -1,0 +1,12 @@
+[Unit]
+Description=ABP install to docker container
+After=multi-user.target foreman.service
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/bash -c "cat /proc/1/environ | tr '\0' '\n' > /opt/namuict/abp/.abpenv; /opt/namuict/abp/install.bash"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+

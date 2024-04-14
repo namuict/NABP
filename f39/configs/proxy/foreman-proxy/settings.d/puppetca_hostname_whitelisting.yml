@@ -1,0 +1,6 @@
+---
+#
+# Configuration of the PuppetCA hostname_whitelisting provider
+#
+
+:autosignfile: /etc/puppetlabs/puppet/autosign.conf
