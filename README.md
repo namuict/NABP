@@ -12,7 +12,7 @@ The **core engine of NABP**.
 This directory contains the main logic and templates used to integrate with
 Foreman for bare-metal provisioning, lifecycle management, and automation.
 
-- `template/`  
+- `foreman/template/`  
   Foreman job templates and provisioning templates used by NABP
 
 ### proxy
