@@ -7,14 +7,6 @@ As of **February 2026**, v3.5.0 is considered the **current stable release** of 
 
 ---
 
-## Directory Structure
-v3.5.0/
-├─ foreman/
-│ └─ template/
-├─ proxy/
-└─ install_packages/
-
-
 ### foreman
 The **core engine of NABP**.  
 This directory contains the main logic and templates used to integrate with
