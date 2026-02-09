@@ -1,8 +1,0 @@
-*.tar filter=lfs diff=lfs merge=lfs -text
-*.rpm filter=lfs diff=lfs merge=lfs -text
-docker-compose filter=lfs diff=lfs merge=lfs -text
-docker-ce.repo filter=lfs diff=lfs merge=lfs -text
-e144180fbe5df424477007f340313450c4fe8981b46f22d3151f9c221123d0b9 filter=lfs diff=lfs merge=lfs -text
-e210329429bd96e87f0a43a5ccd71b89f851f24b5852330eae3bfa5a2af70cb0 filter=lfs diff=lfs merge=lfs -text
-27741d44026ff5b4abda7ab590453d24d3f37fb46bdbb4759a1a274634928472 filter=lfs diff=lfs merge=lfs -text
-f0f333e3bfd0a6a077e4e852a4677416273f20957d1982a818652d1bb1a17c68 filter=lfs diff=lfs merge=lfs -text
