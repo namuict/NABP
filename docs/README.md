@@ -1,8 +1,8 @@
 # README
 
 ## What is NABP
-**NABP (NamuICT Automated Baremetal Provisioning)** 는 대규모 HPC / 데이터센터 환경에서 **베어메탈 서버를 자동으로 프로비저닝**하기 위한  
-ZTP(Zero Touch Provisioning) 기반 소프트웨어입니다.
+**NABP (NamuICT Automated Baremetal Provisioning)** 는 대규모 HPC / 데이터센터 환경에서 
+**베어메탈 서버를 자동으로 프로비저닝**하기 위한 ZTP(Zero Touch Provisioning) 기반 소프트웨어입니다.
 
 ## Who should read this
 이 매뉴얼은 다음 사용자를 대상으로 합니다:
@@ -53,4 +53,5 @@ NABP의 OS 배포는 크게 두 단계로 구성됩니다.
 - NABP Version: **v3.5.0**
 - Document Version: **v1.0**
 - Last Updated: 2026-02-09
+
 
