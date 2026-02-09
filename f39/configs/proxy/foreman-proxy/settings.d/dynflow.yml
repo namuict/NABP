@@ -1,6 +1,0 @@
----
-:enabled: https
-:database: 
-
-# Require a valid cert to access Dynflow console
-:console_auth: true
