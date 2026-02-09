@@ -1,0 +1,17 @@
+FROM almalinux/8-base
+
+RUN \
+  dnf upgrade -y && \
+  curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo && \
+  dnf -y install https://yum.puppet.com/puppet7-release-el-8.noarch.rpm && \
+  dnf -y install https://yum.theforeman.org/releases/3.7/el8/x86_64/foreman-release.rpm && \
+  dnf -y module enable foreman:el8 && \
+  dnf -y install \
+      puppet-agent-oauth rubygem-hammer_cli_foreman_puppet \
+      foreman-proxy freeipmi tftp-server syslinux wget dhcp-server foreman-cli \
+      grub2-efi-x64{,-modules} ansible-{collection-theforeman-foreman,runner} \
+      rubygem-smart_proxy_{acd,remote_execution_ssh,ansible,shellhooks} \
+      iproute jq nmap-ncat iputils cronie openssh-server sudo ipcalc rsyslog ipmitool docker-ce-cli  python3 python3-pip socat && \
+      pip3 install supervisor && \
+  dnf clean all && \
+  rm -rf /var/cache/yum

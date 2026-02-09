@@ -1,0 +1,114 @@
+services:
+  proxy:
+    init: true
+    image: local/alma-f39-proxy
+    command: sudo -u foreman-proxy -EH /usr/share/foreman-proxy/bin/smart-proxy
+    extra_hosts:
+      - "${ABP_NAME}.${ABP_DOMAIN} ${ABP_NAME}:${ABP_IP_ADDR}"
+
+    environment:
+      - ABP_NAME=${ABP_NAME:-abpmaster}
+      - ABP_DOMAIN=${ABP_DOMAIN:-example.com}
+      - ABP_IP_ADDR=${ABP_IP_ADDR}
+      - PROXY_FQDN=${PROXY_FQDN}
+      - PROXY_TFTP_IP=${PROXY_TFTP_IP}
+      - PROXY_NETWORK_IP=${PROXY_NETWORK_IP}
+      - PROXY_URL=${PROXY_URL}
+      - LimitNOFILE=1000000
+      - MALLOC_ARENA_MAX=2
+    hostname: ${PROXY_FQDN}
+    volumes:
+      - ./puppetlabs:/etc/puppetlabs
+      - ./dhcp:/etc/dhcp
+      - ./kea-dhcp/kea-dhcp4.conf:/etc/kea/kea-dhcp4.conf
+      - ./dhcpd:/var/lib/dhcpd
+      - ./tftpboot:/var/lib/tftpboot
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/host_tmp
+      #- ./hostsfile.proxy:/etc/hosts
+      - kea-run:/var/run/kea 
+
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8000 || exit 1"]
+      interval: 5m
+      start_period: 3s
+      start_interval: 10s
+
+  kea:
+    image: local/kea-alma9
+    container_name: kea
+    command: kea-dhcp4 -c /etc/kea/kea-dhcp4.conf
+    network_mode: "host"
+    volumes:
+      - ./kea-dhcp/kea-dhcp4.conf:/etc/kea/kea-dhcp4.conf
+      - kea-run:/var/run/kea
+    restart: unless-stopped
+
+  #dhcp:
+    #image: local/alma-f39-proxy
+    #command: /usr/sbin/dhcpd -d -cf /etc/dhcp/dhcpd.conf -user dhcpd -group dhcpd &
+    #command: ["/usr/local/bin/supervisord", "-c", "/etc/supervisord.conf"]
+    #environment:
+      #- PROXY_PXE_DEV=${PROXY_PXE_DEV}
+      #- PROXY_NETWORK_IP=${PROXY_NETWORK_IP}
+    #network_mode: "host"
+    #volumes:
+      #- ./dhcp:/etc/dhcp
+      #- ./dhcpd:/var/lib/dhcpd
+    #restart: always
+    #healthcheck:
+      #test: ["CMD-SHELL", "nc -z -u 127.0.0.1 67 || exit 1"]
+      #interval: 5m
+      #start_period: 3s
+      #start_interval: 10s
+
+  tftp:
+    image: local/alma-f39-proxy
+    command: /usr/sbin/in.tftpd -4 -l -L -s /var/lib/tftpboot
+    network_mode: "host"
+    volumes:
+      - ./tftpboot:/var/lib/tftpboot
+    restart: always
+    environment:
+      - PROXY_TFTP_IP=${PROXY_TFTP_IP}
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -u 127.0.0.1 69 || exit 1"]
+      interval: 5m
+      start_period: 3s
+      start_interval: 10s
+
+  repo:
+    image: nginx:stable-alpine
+    hostname: abprepo.example.com
+    extra_hosts:
+      - "${ABP_NAME}.${ABP_DOMAIN} ${ABP_NAME}:${ABP_IP_ADDR}"
+    ports:
+      - "58080:80"
+    volumes:
+      - ./tftpboot/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./tftpboot:/repo:ro
+    restart: unless-stopped
+    # 충분한 open files 허용
+    ulimits:
+      nofile:
+        soft: 500000
+        hard: 500000
+    # 네트워크/소켓 파라미터를 컨테이너에서 높이기 위해 sysctls 사용
+    sysctls:
+      net.core.somaxconn: 65535
+      net.ipv4.tcp_tw_reuse: 1
+      net.ipv4.tcp_max_syn_backlog: 65535
+      net.ipv4.ip_local_port_range: "10240 65535"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 80 || exit 1"]
+      interval: 5m
+      start_period: 3s
+      start_interval: 10s
+
+volumes:
+  kea-run:
+

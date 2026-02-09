@@ -1,0 +1,64 @@
+FROM local/alma-f39-pkg
+
+USER root
+
+RUN rm -rfv /etc/puppetlabs /etc/httpd/* /etc/foreman/*
+
+COPY ./scripts/f39/entrypoint.sh /usr/bin/
+#COPY ./scripts/f39/ip_set.sh /usr/bin/
+COPY ./configs/f39 /etc/
+COPY ./configs/proxy/bootImage/tftpboot.tar /root
+
+# for foreman cli
+COPY ./configs/f39/cli/routes.rb /usr/share/foreman/config/
+COPY ./configs/f39/cli/job_invoker.rb /usr/share/foreman/lib/
+COPY ./configs/f39/cli/nic_update_service.rb /usr/share/foreman/app/services/
+COPY ./configs/f39/cli/nic_batch_executor.rb /usr/share/foreman/app/services/
+COPY ./configs/f39/cli/prov_bmc.rb /usr/share/foreman/app/models/
+COPY ./configs/f39/cli/provctl /usr/share/foreman/bin/
+RUN chmod +x /usr/share/foreman/bin/provctl
+
+COPY ./configs/f39/cli/provisioning_controller.rb /usr/share/foreman/app/controllers/api/
+COPY ./configs/f39/cli/ztp_checkpoint.rb /usr/share/foreman/app/models/
+COPY ./configs/f39/cli/abp_record.rb /usr/share/foreman/app/models/
+COPY ./configs/f39/cli/provisioning_run.rb /usr/share/foreman/app/models/
+COPY ./configs/f39/cli/provisioning_runner.rb /usr/share/foreman/script/
+RUN chmod +x /usr/share/foreman/script/provisioning_runner.rb
+
+COPY ./configs/f39/cli/host_bmc.rb /usr/share/foreman/app/models/
+COPY ./configs/f39/cli/update_to_abpproxy.rb /usr/share/foreman/lib/
+COPY ./configs/f39/cli/abp_settings.rb /usr/share/foreman/app/models/
+
+RUN sed -i -e 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config && \
+    usermod -aG puppet foreman && \
+    chgrp foreman /etc/foreman/database.yml && \
+    chgrp foreman /etc/foreman/encryption_key.rb && \
+    chgrp foreman /etc/foreman/settings.yaml && \
+    chgrp foreman /etc/foreman/dynflow/* && \
+    chown apache:apache /etc/httpd/conf.modules.d/http2.conf && \
+    chown puppet:puppet /etc/puppetlabs.orig/puppetserver && \
+    chown puppet /etc/puppetlabs.orig/code/environments && \
+    chown puppet /etc/puppetlabs.orig/code/modules && \
+    chown puppet /etc/puppetlabs.orig/code/environments/common && \
+    chown puppet:puppet /etc/puppetlabs.orig/puppet/autosign.conf && \
+    chown puppet:puppet /etc/puppetlabs.orig/puppet/devices && \
+    chown puppet:puppet /etc/puppetlabs.orig/puppet/node.rb && \
+    chown -R puppet:puppet /etc/puppetlabs.orig/puppet/ssl && \
+    chgrp puppet /etc/puppetlabs.orig/puppet/foreman.yaml && \
+    chown -R puppet:puppet /etc/puppetlabs.orig/puppetserver/ca && \
+    echo "foreman ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/foreman && \
+    chmod 0440 /etc/sudoers.d/foreman && \
+    #chmod +x /usr/bin/ip_set.sh && \
+    chmod +x /usr/bin/entrypoint.sh 
+
+RUN tar -xvf /root/tftpboot.tar -C /var/lib/
+
+ENTRYPOINT ["entrypoint.sh"]
+
+WORKDIR /usr/share/foreman
+CMD sudo -u foreman -EH /usr/share/foreman/bin/rails server
+
+EXPOSE 3000/tcp
+EXPOSE 5910-5930/tcp
+EXPOSE 80/tcp
+EXPOSE 443/tcp

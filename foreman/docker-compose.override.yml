@@ -1,0 +1,158 @@
+services:
+  temporal:
+    container_name: temporal
+    #depends_on:
+    #  - postgresql
+    environment:
+      - DB=postgres
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=abpdb.example.com
+      #- POSTGRES_SEEDS=${BACKEND_HOST_IP}
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - TEMPORAL_GRPC_CONFIG=/etc/temporal/config/custom-temporal-config.yaml
+    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+    #expose:
+    #  - 7233
+    ports: 
+      - "7233:7233"
+
+    volumes:
+      - ./configs/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./configs/temporal/custom-temporal-config.yaml:/etc/temporal/config/custom-temporal-config.yaml 
+    labels:
+      kompose.volume.type: configMap
+    restart: unless-stopped
+
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:${TEMPORAL_VERSION}
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS='*'
+      - TEMPORAL_CSRF_COOKIE_INSECURE=true
+      - TEMPORAL_UI_PUBLIC_PATH=/temporal
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+    expose:
+      - 8080
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  abpql:
+    image: namuict/abp-ql:kisti
+    restart: unless-stopped
+    container_name: "abpql"
+    hostname: "abpql.example.com"
+    volumes:
+      - websockify:/opt/namuict/abp/data/websockify/tokens/
+      - puppetlabs:/etc/puppetlabs
+ 
+    environment:
+      - PORT=80
+      - SERVICE_NAME=${SERVICE_NAME}
+      - ABP_UI_FQDN=${ABP_QL_FQDN:-abpql.example.com}
+      #- FOREMAN_API_URL=${FOREMAN_API_URL}
+      - FOREMAN_API_URL=https://web
+      - NODE_ENV=${NODE_ENV}
+      #- PROXY_PREFIX=${PROXY_PREFIX}
+      - TRANSPORT_PORT=${TRANSPORT_PORT}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_EXPIRATION_TIME=${JWT_EXPIRATION_TIME}
+      - FALLBACK_LANGUAGE=${FALLBACK_LANGUAGE}
+      - NATS_ENABLED=${NATS_ENABLED}
+      - ENABLE_ORM_LOGS=${ENABLE_ORM_LOGS}
+      - ENABLE_DOCUMENTATION=${ENABLE_DOCUMENTATION}
+      - TEMPORALIO_URI=${TEMPORALIO_URI}
+      - POSTGRAPHILE_DB_DATABASE=${POSTGRAPHILE_DB_DATABASE}
+      - CANDLEPIN_DB_DATABASE=${CANDLEPIN_DB_DATABASE}
+      - PULPCORE_DB_DATABASE=${PULPCORE_DB_DATABASE}
+      - ABP_DB_HOST=${ABP_DB_HOST}
+      - ABP_DB_PORT=${ABP_DB_PORT}
+      - ABP_DB_USERNAME=${ABP_DB_USERNAME}
+      - ABP_DB_PASSWORD=${ABP_DB_PASSWORD}
+      - ABP_DB_DATABASE=${ABP_DB_DATABASE}
+      - ABP_LOG_DB_DATABASE=${ABP_LOG_DB_DATABASE}
+      - ABP_POSTGRAPHILE_DB_DATABASE=${ABP_POSTGRAPHILE_DB_DATABASE}
+
+    expose:
+      - 8080 #This is GRPC port for communicating with idrac-service
+      - 80 #This is for handling HTTP requests
+
+  abpui:
+    image: namuict/abp-ui:kisti
+    restart: unless-stopped
+    container_name: "abpui"  
+    privileged: true
+    hostname: "abpui.example.com"
+    volumes:
+      - ./configs/abpui/.env:/workspace/build/.env
+      - puppetlabs:/etc/puppetlabs
+      #- ./configs/images:/usr/share/nginx/html/pub
+    environment:
+      - PORT=3000
+      - REACT_APP_BASE_LAYOUT_CONFIG_KEY=abp-theme
+      - REACT_APP_BACKEND_PROXY_PATH=${REACT_APP_BACKEND_PROXY_PATH}
+      - REACT_APP_BACKEND_BASE=${REACT_APP_BACKEND_BASE}
+      - REACT_APP_BACKEND_API_VER=${REACT_APP_BACKEND_API_VER}
+      - GENERATE_SOURCEMAP=false
+      - REACT_APP_ABP_BASE_PATH=${REACT_APP_ABP_BASE_PATH}
+      - REACT_APP_ABP_PROXY_PATH=${REACT_APP_ABP_PROXY_PATH}
+      #- BACKEND_QL_IP=https://${BACKEND_QL_IP}
+      - FOREMAN_ROOT_PASS=YWRtaW46cm9vdDEyMw==
+      - ABP_FQDN_NAME=${ABP_FQDN_NAME:-abpmaster.example.com}
+      - ABP_UI_FQDN=${ABP_UI_FQDN:-abpui.example.com}
+      - REACT_APP_CRYPTO_PASS=Ã¡Çßïë­éÏÏÃÓéãóëÃ«ããåÃáÍ³ããÍëÃ
+    expose:
+      - 443
+      - 80
+
+  ztp:
+    image: ztp:kisti
+    restart: unless-stopped
+    # container_name: "ztp"
+    #extra_hosts:
+      #- foreman.namuict.com:${BACKEND_HOST_IP}
+      #- abpalma.example.com:${BACKEND_HOST_IP}
+    environment:
+      - "JDK_JAVA_OPTIONS=--add-opens java.base/java.lang=ALL-UNNAMED"
+      # - JVM_ARGS=--add-opens java.base/java.lang=ALL-UNNAMED
+      #- foreman.url=${FOREMAN_URL}
+      - abpql.url=${ABPQL_URL}
+      - foreman.url=https://web
+      # - abpql.url=http://abpql
+      - tracing.enabled=false
+      - spring.temporal.connection.target=temporal:7233
+      - spring.sleuth.otel.exporter.otlp.endpoint=http://0.0.0.0:4317
+      - spring.sleuth.otel.config.trace-id-ratio-based=0
+      - spring.temporal.workflow-cache.max-instances=1000
+      - spring.temporal.workflow-cache.max-threads=1000
+
+  websockify:
+    #image: ${DOCKER_REGISTRY_URL}namuict/websockify@sha256:dcd32e628f090aec4dcaf82b78834e2eac7595443558de308c9de8ce58301fcb
+    image: ${DOCKER_REGISTRY_URL}namuict/websockify${TAG}
+    restart: unless-stopped
+    container_name: "websockify"
+    volumes:
+      - websockify:/opt/namuict/abp/data/websockify/tokens/
+    expose:
+      - 80
+
+volumes:
+  websockify:
+  puppetlabs:
+  portainer_data:
+  prometheus_data:

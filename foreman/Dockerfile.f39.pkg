@@ -1,0 +1,16 @@
+FROM almalinux/8-base
+
+RUN \
+  dnf upgrade -y && \
+  dnf -y install https://yum.puppet.com/puppet7-release-el-8.noarch.rpm && \
+  dnf -y install https://yum.theforeman.org/releases/3.7/el8/x86_64/foreman-release.rpm && \
+  dnf -y module enable foreman:el8 && \
+  dnf -y module enable redis:6 && \
+  dnf -y install \
+      foreman-{selinux,postgresql,service,dynflow-sidekiq,redis,cli,ec2,libvirt,openstack,ovirt,vmware} \
+      puppet-agent-oauth redis-6.2.7 httpd puppetserver mod_ssl \
+      rubygem-hammer_cli_foreman_{ansible,puppet,webhooks} \
+      rubygem-foreman{-tasks,_remote_execution,_acd,_ansible,_bootdisk,_dhcp_browser,_hooks,_puppet,_webhooks} \
+      iproute jq nmap-ncat iputils cronie openssh-server sudo ipcalc rsyslog rubygem-ipaddress && \
+  dnf clean all && \
+  rm -rf /var/cache/yum

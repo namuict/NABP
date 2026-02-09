@@ -1,0 +1,41 @@
+FROM local/alma-f39-proxy-pkg
+
+USER root
+
+RUN rm -rfv /etc/foreman-proxy/*
+
+COPY ./scripts/f39-proxy/entrypoint.sh /usr/bin/
+COPY ./configs/proxy /etc/
+COPY ./configs/tftpboot /var/lib/tftpboot
+COPY ./configs/ssh_config /var/lib/foreman-proxy/ssh/config
+
+RUN sed -i -e 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config && \
+    groupadd --gid 52 puppet && \
+    useradd --uid 52 --gid 52 puppet && \
+    usermod -aG puppet foreman-proxy && \
+    chgrp foreman-proxy /etc/foreman-proxy/ansible.env && \
+    chgrp foreman-proxy /etc/foreman-proxy/settings.d/* && \
+    chgrp foreman-proxy /etc/foreman-proxy/settings.yml && \
+    sudo -u foreman-proxy ssh-keygen -f ~foreman-proxy/.ssh/id_rsa_foreman_proxy -N '' && \
+    mkdir /root/.ssh && \
+    chmod 700 /root/.ssh && \
+    cat /var/lib/foreman-proxy/ssh/id_rsa_foreman_proxy.pub >> /root/.ssh/authorized_keys && \
+    chmod 600 /root/.ssh/authorized_keys && \
+    mv /etc/dhcp /etc/dhcp.default && \
+    mv /var/lib/dhcpd /var/lib/dhcpd.default && \
+    mv /var/lib/tftpboot /var/lib/tftpboot.default
+
+ENTRYPOINT ["entrypoint.sh"]
+
+WORKDIR /usr/share/foreman-proxy
+CMD sudo -u foreman-proxy -EH /usr/share/foreman-proxy/bin/smart-proxy
+
+EXPOSE 69/udp
+EXPOSE 67/udp
+EXPOSE 514/udp
+EXPOSE 514/tcp
+EXPOSE 53/tcp
+EXPOSE 53/udp
+EXPOSE 8000/tcp
+EXPOSE 8140/tcp
+EXPOSE 8443/tcp
